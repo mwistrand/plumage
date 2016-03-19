@@ -1,0 +1,25 @@
+{
+	"version": "1.7.0",
+	"compilerOptions": {
+		"declaration": false,
+		"module": "umd",
+		"noImplicitAny": true,
+		"outDir": "dist/",
+		"removeComments": false,
+		"target": "es5",
+		"experimentalDecorators": true,
+		"sourceMap": true,
+		"moduleResolution": "classic"
+	},
+	"filesGlob": [
+		"./src/**/*.ts",
+		"./tests/**/*.ts",
+		"./typings/tsd.d.ts"
+	],
+	"files": [
+		"./src/parser.ts",
+		"./tests/unit/parser.ts",
+		"./typings/tsd.d.ts"
+	]
+}
+
