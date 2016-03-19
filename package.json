@@ -1,0 +1,19 @@
+{
+  "name": "plumage",
+  "version": "0.0.1",
+  "description": "A view component system written in TypeScript.",
+  "author": "Matt Wistrand",
+	"bugs": {
+		"url": "https://github.com/mwistrand/plumage/issues"
+	},
+	"license": "BSD-3-Clause",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mwistrand/plumage.git"
+	},
+
+  "devDependencies": {
+    "typescript": "1.8.7",
+    "intern": "3.0.6"
+  }
+}
