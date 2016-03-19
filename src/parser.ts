@@ -24,6 +24,30 @@ export interface HtmlMap {
 }
 
 /**
+ * Escapes HTML characters to be displayed as plain text.
+ *
+ * @param text
+ * The text to escape.
+ *
+ * @return
+ * The escaped text.
+ */
+export const escapeHtml = (function () {
+	const pattern = /[<>&]/g;
+	const escapable: { [key: string]: string; } = {
+		'<': '&lt;',
+		'>': '&gt;',
+		'&': '&amp;'
+	};
+
+	return function (text: string): string {
+		return text.replace(pattern, function (matched: string): string {
+			return escapable[matched];
+		});
+	};
+})();
+
+/**
  * Determines whether the specified string represents an HTML tag.
  *
  * @param value

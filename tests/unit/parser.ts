@@ -5,6 +5,12 @@ import * as parser from 'src/parser';
 registerSuite({
 	name: 'Plumage Template Parser',
 
+	escapeHtml() {
+		assert.strictEqual(parser.escapeHtml('<div class="someClass">Minding my Ps & Qs</div>'),
+			'&lt;div class="someClass"&gt;Minding my Ps &amp; Qs&lt;/div&gt;',
+			'<, >, and & are escaped.');
+	},
+
 	isHtmlTag() {
 		assert.isFalse(parser.isHtmlTag(''));
 		assert.isFalse(parser.isHtmlTag('<>'));
