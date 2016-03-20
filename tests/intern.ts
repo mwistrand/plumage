@@ -15,12 +15,13 @@ export const loaderOptions = {
 	// Packages that should be registered with the loader in each testing environment
 	packages: [
 		{ name: 'src', location: 'dist/src' },
-		{ name: 'tests', location: 'dist/tests' }
+		{ name: 'tests', location: 'dist/tests' },
+		{ name: 'maquette', location: 'node_modules/maquette/dist', main: 'maquette.js' }
 	]
 }
 
 // Non-functional test suite(s) to run in each browser
-export const suites = [ 'tests/unit/parser' ];
+export const suites = [ 'tests/unit/parser', 'tests/unit/vdom' ];
 
 // A regular expression matching URLs to files that should not be included in code coverage analysis
 export const excludeInstrumentation = /^(?:tests|node_modules)\//;

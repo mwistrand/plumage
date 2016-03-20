@@ -1,6 +1,17 @@
 const BLANK_PATTERN = /^\s+$/;
 const TAG_NAME_PATTERN = /^<\/?([^\s\/>]+).*/;
 
+// Step 1 of the template processing: convert each HTML tag/comment/string/other
+// value into a flat array of parts. For example,
+// `<div class="class1 class2">
+//		Some text
+//		${someObject}
+//		<span>More text</span>
+//	</div>`
+//
+//	is converted to:
+//	[ '<div class="class1 class2">', 'Some text', {}, '<span>', 'More text',
+//		'</span>', '</div>' ]
 function convertTemplateToArray(literals: string[], values: any[]): any[] {
 	const tags: any[] = [];
 	let inAttributeValue = false;
@@ -92,6 +103,10 @@ function extractAttributeValue(parts: string[]): string {
 		value = value.slice(1, value.length - 1);
 	}
 
+	return value;
+}
+
+function identity(value: any): any {
 	return value;
 }
 
@@ -238,9 +253,13 @@ function parseTagName(tag: string): string {
 	return tag.replace(TAG_NAME_PATTERN, '$1');
 }
 
+export interface AttributeMap {
+	[name: string]: string;
+}
+
 export interface HtmlMap {
 	name: string;
-	attributes?: { [name: string]: string };
+	attributes?: AttributeMap;
 	children?: any[];
 }
 
@@ -268,6 +287,85 @@ export const escapeHtml = (function () {
 	};
 })();
 
+/**
+ * Returns a tag function that converts an ES2015 template into a node tree.
+ *
+ * Returns an map representing a hierarchy of HTML node definitions. The values
+ * contained within the map are not converted to DOM nodes. Instead, it is up to
+ * the consuming API to correctly render the values. Each HTML tag is converted to
+ * an object with a `name` property and an optional `attributes` object and `children`
+ * array. Node attribute names must be unique; duplicate attribute names will cause
+ * a `SyntaxError` to be thrown.
+ *
+ * HTML tags need not be closed; but any unclosed tag is assumed to not have any
+ * children. HTML comments (`<!-- ... -->`) are preserved in the output, while line
+ * comments (`// ...`) are stripped out.
+ *
+ * Arbitrary values included in the interpolation expressions are mapped accordingly:
+ *
+ * - Strings, numbers, and symbols are converted to strings.
+ * - All other values are converted to an `TypeMap` object.
+ *
+ * Use: parseNodeTree`<div>...</div>`.
+ * Example:
+ *
+ * const arbitraryObject = { prop: 'value' };
+ * const record = {
+ *	name: 'The Complete Village Vanguard Recordings',
+ *	artist: 'Bill Evans'
+ * };
+ * parseNodeTree`<form class="class1 class2" onsubmit="methodName">
+ *	${arbitraryObject}
+ *	<fieldset>
+ *		<input name="artist" value="${record.artist}">
+ *		<input type="submit" disabled>
+ *	</fieldset>
+ * </form>`
+ *
+ * Converts to:
+ *
+ * {
+ *	name: 'form',
+ *	attributes: {
+ *		'class': 'class1 class2'
+ *		onsubmit: 'methodName'
+ *	},
+ *	children: [
+ *		{
+ *			type: 0, // ValueTypes.Object
+ *			value: { prop: 'value' }
+ *		},
+ *		{
+ *			name: 'fieldset',
+ *			children: [
+ *				{
+ *					name: 'input',
+ *					attributes: { name: 'artist', value: 'Bill Evans' }
+ *				},
+ *				{
+ *					name: 'input',
+ *					attributes: { type: 'submit', disabled: null }
+ *				}
+ *			]
+ *		}
+ *	]
+ * }
+ */
+export default function getParser(callback: ParserCallback = identity): Parser {
+	return function (literals: string[], ...values: any[]): HtmlMap {
+		return callback(mapArrayToNode(nestNodeArray(convertTemplateToArray(literals, values))));
+	};
+}
+
+/**
+ * Determines whether the specified string is an HTML comment.
+ *
+ * @param value
+ * The value to test.
+ *
+ * @return
+ * `true` if the string is an HTML comment; `false` otherwise.
+ */
 export function isHtmlComment(value: string): boolean {
 	return value.indexOf('<!--') === 0 && value.lastIndexOf('-->') === value.length - 3;
 }
@@ -385,99 +483,12 @@ export function mapHtmlTagToArray(html: string): HtmlMap {
 	return map;
 }
 
-// {
-// 	name: 'div',
-// 	attributes: {},
-// 	type: 'node',
+export interface Parser {
+	(literals: string[], ...values: any[]): any;
+}
 
-// 	children: [
-// 		{
-// 			type: 'array',
-// 			value: []
-// 		},
-
-// 		{
-// 			type: 'node',
-// 			name: 'span',
-// 			children: [
-// 				'lorem ipsum',
-// 				'<!-- comment -->',
-// 				'text with an <!-- inline --> comment'
-// 			]
-// 		},
-// 		{
-//			type: 'object',
-//			value: {}
-//		}
-// 	]
-// }
-
-/**
- * A tag function that converts an ES2015 template into a node tree.
- *
- * Returns an map representing a hierarchy of HTML node definitions. The values
- * contained within the map are not converted to DOM nodes. Instead, it is up to
- * the consuming API to correctly render the values. Each HTML tag is converted to
- * an object with a `name` property and an optional `attributes` object and `children`
- * array. Node attribute names must be unique; duplicate attribute names will cause
- * a `SyntaxError` to be thrown.
- *
- * HTML tags need not be closed; but any unclosed tag is assumed to not have any
- * children. HTML comments (`<!-- ... -->`) are preserved in the output, while line
- * comments (`// ...`) are stripped out.
- *
- * Arbitrary values included in the interpolation expressions are mapped accordingly:
- *
- * - Strings, numbers, and symbols are converted to strings.
- * - All other values are converted to an `TypeMap` object.
- *
- * Use: parseNodeTree`<div>...</div>`.
- * Example:
- *
- * const arbitraryObject = { prop: 'value' };
- * const record = {
- *	name: 'The Complete Village Vanguard Recordings',
- *	artist: 'Bill Evans'
- * };
- * parseNodeTree`<form class="class1 class2" onsubmit="methodName">
- *	${arbitraryObject}
- *	<fieldset>
- *		<input name="artist" value="${record.artist}">
- *		<input type="submit" disabled>
- *	</fieldset>
- * </form>`
- *
- * Converts to:
- *
- * {
- *	name: 'form',
- *	attributes: {
- *		'class': 'class1 class2'
- *		onsubmit: 'methodName'
- *	},
- *	children: [
- *		{
- *			type: 0, // ValueTypes.Object
- *			value: { prop: 'value' }
- *		},
- *		{
- *			name: 'fieldset',
- *			children: [
- *				{
- *					name: 'input',
- *					attributes: { name: 'artist', value: 'Bill Evans' }
- *				},
- *				{
- *					name: 'input',
- *					attributes: { type: 'submit', disabled: null }
- *				}
- *			]
- *		}
- *	]
- * }
- */
-export function parseNodeTree(parts: string[], ...values: any[]): HtmlMap {
-	return mapArrayToNode(nestNodeArray(convertTemplateToArray(parts, values)));
+export interface ParserCallback {
+	(map: HtmlMap): any;
 }
 
 /**

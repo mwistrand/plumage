@@ -17,8 +17,11 @@
 		"./typings/tsd.d.ts"
 	],
 	"files": [
+		"./src/interfaces.d.ts",
 		"./src/parser.ts",
+		"./src/vdom.ts",
 		"./tests/unit/parser.ts",
+		"./tests/unit/vdom.ts",
 		"./typings/tsd.d.ts"
 	]
 }

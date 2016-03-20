@@ -1,71 +1,73 @@
 import registerSuite = require('intern!object');
 import assert = require('intern/chai!assert');
-import * as parser from 'src/parser';
+import getParser, { escapeHtml, isHtmlTag, isWhitespace, mapHtmlTagToArray, ValueTypes } from 'src/parser';
+
+const parse = getParser();
 
 registerSuite({
 	name: 'Plumage Template Parser',
 
 	escapeHtml() {
-		assert.strictEqual(parser.escapeHtml('<div class="someClass">Minding my Ps & Qs</div>'),
+		assert.strictEqual(escapeHtml('<div class="someClass">Minding my Ps & Qs</div>'),
 			'&lt;div class="someClass"&gt;Minding my Ps &amp; Qs&lt;/div&gt;',
 			'<, >, and & are escaped.');
 	},
 
 	isHtmlTag() {
-		assert.isFalse(parser.isHtmlTag(''));
-		assert.isFalse(parser.isHtmlTag('<>'));
-		assert.isFalse(parser.isHtmlTag('div'));
-		assert.isFalse(parser.isHtmlTag('<div'));
-		assert.isFalse(parser.isHtmlTag('div>'));
-		assert.isFalse(parser.isHtmlTag('< div>'));
-		assert.isFalse(parser.isHtmlTag('<\ndiv>'));
-		assert.isFalse(parser.isHtmlTag('<\tdiv>'));
+		assert.isFalse(isHtmlTag(''));
+		assert.isFalse(isHtmlTag('<>'));
+		assert.isFalse(isHtmlTag('div'));
+		assert.isFalse(isHtmlTag('<div'));
+		assert.isFalse(isHtmlTag('div>'));
+		assert.isFalse(isHtmlTag('< div>'));
+		assert.isFalse(isHtmlTag('<\ndiv>'));
+		assert.isFalse(isHtmlTag('<\tdiv>'));
 
-		assert.isTrue(parser.isHtmlTag('<div>'));
-		assert.isTrue(parser.isHtmlTag('<div class="Component-element--modifier">'));
-		assert.isTrue(parser.isHtmlTag('<random:value>'));
-		assert.isTrue(parser.isHtmlTag('<random-value>'));
+		assert.isTrue(isHtmlTag('<div>'));
+		assert.isTrue(isHtmlTag('<div class="Component-element--modifier">'));
+		assert.isTrue(isHtmlTag('<random:value>'));
+		assert.isTrue(isHtmlTag('<random-value>'));
 	},
 
 	isWhitespace() {
-		assert.isFalse(parser.isWhitespace('a'));
-		assert.isFalse(parser.isWhitespace(' a'));
-		assert.isFalse(parser.isWhitespace(' a\t\n'));
-		assert.isFalse(parser.isWhitespace('\ta '));
-		assert.isFalse(parser.isWhitespace('a\nb'));
+		assert.isFalse(isWhitespace('a'));
+		assert.isFalse(isWhitespace(' a'));
+		assert.isFalse(isWhitespace(' a\t\n'));
+		assert.isFalse(isWhitespace('\ta '));
+		assert.isFalse(isWhitespace('a\nb'));
 
-		assert.isTrue(parser.isWhitespace(''));
-		assert.isTrue(parser.isWhitespace(' '));
-		assert.isTrue(parser.isWhitespace('\t'));
-		assert.isTrue(parser.isWhitespace('\n'));
-		assert.isTrue(parser.isWhitespace('    '));
-		assert.isTrue(parser.isWhitespace(' \n  \t '));
-		assert.isTrue(parser.isWhitespace(` \n
+		assert.isTrue(isWhitespace(''));
+		assert.isTrue(isWhitespace(' '));
+		assert.isTrue(isWhitespace('\t'));
+		assert.isTrue(isWhitespace('\n'));
+		assert.isTrue(isWhitespace('    '));
+		assert.isTrue(isWhitespace(' \n  \t '));
+		assert.isTrue(isWhitespace(` \n
 				\t `));
 	},
 
 	mapHtmlTagToArray: {
 		'assert tag with no attributes'() {
-			assert.deepEqual(parser.mapHtmlTagToArray('<input />'), {
+			assert.deepEqual(mapHtmlTagToArray('<input />'), {
 				name: 'input'
 			});
 
-			assert.deepEqual(parser.mapHtmlTagToArray('<div>'), {
+			assert.deepEqual(mapHtmlTagToArray('<div>'), {
 				name: 'div'
 			});
 
-			assert.deepEqual(parser.mapHtmlTagToArray('<random:value>'), {
+			assert.deepEqual(mapHtmlTagToArray('<random:value>'), {
 				name: 'random:value'
 			});
 
-			assert.deepEqual(parser.mapHtmlTagToArray('<random-value>'), {
+			assert.deepEqual(mapHtmlTagToArray('<random-value>'), {
 				name: 'random-value'
 			});
 		},
 
 		'assert tag with attributes'() {
 			let tag: string = '<input type="text" name="name" value="">';
-			assert.deepEqual(parser.mapHtmlTagToArray(tag), {
+			assert.deepEqual(mapHtmlTagToArray(tag), {
 				name: 'input',
 				attributes: {
 					type: 'text',
@@ -75,7 +77,7 @@ registerSuite({
 			}, 'Name/value pair attributes converted.');
 
 			tag = '<input disabled>';
-			assert.deepEqual(parser.mapHtmlTagToArray(tag), {
+			assert.deepEqual(mapHtmlTagToArray(tag), {
 				name: 'input',
 				attributes: {
 					disabled: null
@@ -83,7 +85,7 @@ registerSuite({
 			}, 'Name-only attributes converted.');
 
 			tag = '<input value="2 + 2 = 4">';
-			assert.deepEqual(parser.mapHtmlTagToArray(tag), {
+			assert.deepEqual(mapHtmlTagToArray(tag), {
 				name: 'input',
 				attributes: {
 					value: '2 + 2 = 4'
@@ -91,7 +93,7 @@ registerSuite({
 			}, 'Attribute parsing does not choke on `=`');
 
 			tag = '<input value="value with \"\" quotes.">';
-			assert.deepEqual(parser.mapHtmlTagToArray(tag), {
+			assert.deepEqual(mapHtmlTagToArray(tag), {
 				name: 'input',
 				attributes: {
 					value: 'value with "" quotes.'
@@ -102,7 +104,7 @@ registerSuite({
 				data-text="The quick brown \"fox\" jumped over the lazy dog."
 				data-other-text="2 + 2 = 4"
 				data-plumage-id="12345" id="12345" aria-disabled="disabled" disabled>`;
-			assert.deepEqual(parser.mapHtmlTagToArray(tag), {
+			assert.deepEqual(mapHtmlTagToArray(tag), {
 				name: 'div',
 				attributes: {
 					'class': 'Component-element Component-element--modifier',
@@ -117,19 +119,19 @@ registerSuite({
 		}
 	},
 
-	parseNodeTree: {
+	getParser: {
 		errors() {
 			assert['throws'](function () {
 				const name = 'Bill Evans';
-				parser.parseNodeTree`${name}`;
+				parse`${name}`;
 			});
 			assert['throws'](function () {
-				parser.parseNodeTree`<!-- comment -->`;
+				parse`<!-- comment -->`;
 			});
 		},
 
 		'assert single, unclosed node'() {
-			const result = parser.parseNodeTree`<input name="name" disabled>`;
+			const result = parse`<input name="name" disabled>`;
 			assert.deepEqual(result, {
 				name: 'input',
 				attributes: {
@@ -140,7 +142,7 @@ registerSuite({
 		},
 
 		'assert single, closed node'() {
-			const result = parser.parseNodeTree`<div class="Component-element"
+			const result = parse`<div class="Component-element"
 				data-text="The quick brown \"fox\" jumped over the lazy dog."
 				data-other-text="2 + 2 = 4"
 				data-plumage-id="12345" id="12345" aria-disabled="disabled" disabled></div>`;
@@ -160,7 +162,7 @@ registerSuite({
 		},
 
 		'assert text nodes'() {
-			const result = parser.parseNodeTree`<div>Lorem ipsum dolor sit amet</div>`;
+			const result = parse`<div>Lorem ipsum dolor sit amet</div>`;
 
 			assert.deepEqual(result, {
 				name: 'div',
@@ -169,13 +171,13 @@ registerSuite({
 		},
 
 		'assert comments'() {
-			let result = parser.parseNodeTree`<div><!-- html comment --></div>`;
+			let result = parse`<div><!-- html comment --></div>`;
 			assert.deepEqual(result, {
 				name: 'div',
 				children: [ '<!-- html comment -->' ]
 			}, 'HTML comments are preserved.');
 
-			result = parser.parseNodeTree`<div>
+			result = parse`<div>
 				// line comment
 			</div>`;
 			assert.deepEqual(result, {
@@ -184,7 +186,7 @@ registerSuite({
 		},
 
 		'assert multiple tags'() {
-			const result = parser.parseNodeTree`<div onclick="methodName">
+			const result = parse`<div onclick="methodName">
 				// HTML comment
 				<span>$![someProperty]</span>
 				<input name="happy">
@@ -209,10 +211,16 @@ registerSuite({
 			});
 		},
 
+		'assert custom callback'() {
+			assert.isNull(getParser(function () {
+				return null;
+			})`<div></div>`);
+		},
+
 		'replacement values': {
 			'string'() {
 				const name = 'Bill Evans';
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${name}
 				</div>`;
 
@@ -224,7 +232,7 @@ registerSuite({
 
 			'number'() {
 				const count = 42;
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${count}
 				</div>`;
 
@@ -236,7 +244,7 @@ registerSuite({
 
 			'symbol'() {
 				const sym = Symbol();
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${sym}
 				</div>`;
 
@@ -248,56 +256,56 @@ registerSuite({
 
 			'array'() {
 				const array = [ 0, 1, 2 ];
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${array}
 				</div>`;
 
 				assert.deepEqual(result, {
 					name: 'div',
 					children: [
-						{ type: parser.ValueTypes.Array, value: array }
+						{ type: ValueTypes.Array, value: array }
 					]
 				});
 			},
 
 			'object'() {
 				const object = { name: 'Bill Evans', album: 'New Jazz Conceptions' };
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${object}
 				</div>`;
 
 				assert.deepEqual(result, {
 					name: 'div',
 					children: [
-						{ type: parser.ValueTypes.Object, value: object }
+						{ type: ValueTypes.Object, value: object }
 					]
 				});
 			},
 
 			'function'() {
 				const callback = function () {};
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${callback}
 				</div>`;
 
 				assert.deepEqual(result, {
 					name: 'div',
 					children: [
-						{ type: parser.ValueTypes.Function, value: callback }
+						{ type: ValueTypes.Function, value: callback }
 					]
 				});
 			},
 
 			'undefined'() {
 				let value: any;
-				const result = parser.parseNodeTree`<div>
+				const result = parse`<div>
 					${value}
 				</div>`;
 
 				assert.deepEqual(result, {
 					name: 'div',
 					children: [
-						{ type: parser.ValueTypes.Undefined, value: undefined }
+						{ type: ValueTypes.Undefined, value: undefined }
 					]
 				});
 			}
