@@ -52,7 +52,7 @@ function getAttributes(attributes: AttributeMap, context: Context, mapper: Inter
 			}
 			hAttributes[key] = callback.bind(context);
 		}
-		else if (typeof value === 'string' && isInterpolationValue(value)) {
+		else if (isInterpolationValue(value)) {
 			hAttributes[key] = mapper({
 				type: ValueTypes.Interpolation,
 				value: value

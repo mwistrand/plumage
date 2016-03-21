@@ -393,7 +393,7 @@ export function isHtmlTag(value: string): boolean {
 }
 
 export function isInterpolationValue(value: string): boolean {
-	return (value.indexOf('$[') === 0 || value.indexOf('$![') === 0) &&
+	return Boolean(value) && (value.indexOf('$[') === 0 || value.indexOf('$![') === 0) &&
 		value.lastIndexOf(']') === value.length - 1;
 }
 

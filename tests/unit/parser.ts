@@ -1,6 +1,13 @@
 import registerSuite = require('intern!object');
 import assert = require('intern/chai!assert');
-import getParser, { escapeHtml, isHtmlTag, isWhitespace, mapHtmlTagToArray, ValueTypes } from 'src/parser';
+import getParser, {
+	escapeHtml,
+	isHtmlTag,
+	isInterpolationValue,
+	isWhitespace,
+	mapHtmlTagToArray,
+	ValueTypes
+} from 'src/parser';
 
 const parse = getParser();
 
@@ -27,6 +34,18 @@ registerSuite({
 		assert.isTrue(isHtmlTag('<div class="Component-element--modifier">'));
 		assert.isTrue(isHtmlTag('<random:value>'));
 		assert.isTrue(isHtmlTag('<random-value>'));
+	},
+
+	isInterpolationValue() {
+		assert.isFalse(isInterpolationValue(null));
+		assert.isFalse(isInterpolationValue(''));
+		assert.isFalse(isInterpolationValue('${value}'));
+		assert.isFalse(isInterpolationValue('$[value]a'));
+		assert.isFalse(isInterpolationValue('aaa$[value]'));
+		assert.isFalse(isInterpolationValue('aaa$[value]aa'));
+
+		assert.isTrue(isInterpolationValue('$[value]'));
+		assert.isTrue(isInterpolationValue('$![value]'));
 	},
 
 	isWhitespace() {
