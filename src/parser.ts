@@ -1,6 +1,23 @@
 const BLANK_PATTERN = /^\s+$/;
 const TAG_NAME_PATTERN = /^<\/?([^\s\/>]+).*/;
 
+interface Converter {
+	inAttributeValue: boolean;
+	inComment: boolean;
+	inTag: boolean;
+	previous: string;
+	result: string
+	tags: any[];
+
+	closeComment(): void;
+	closeTag(char: string): void;
+	convert(literals: string[], values: any[]): any[];
+	openComment(): void;
+	openTag(char: string): void;
+	processChar(char: string): void;
+	reset(): void;
+}
+
 // Step 1 of the template processing: convert each HTML tag/comment/string/other
 // value into a flat array of parts. For example,
 // `<div class="class1 class2">
@@ -12,81 +29,109 @@ const TAG_NAME_PATTERN = /^<\/?([^\s\/>]+).*/;
 //	is converted to:
 //	[ '<div class="class1 class2">', 'Some text', {}, '<span>', 'More text',
 //		'</span>', '</div>' ]
-function convertTemplateToArray(literals: string[], values: any[]): any[] {
-	const tags: any[] = [];
-	let inAttributeValue = false;
-	let inComment = false;
-	let inTag = false;
-	let result = '';
+const converter = <Converter> {
+	closeComment(): void {
+		this.inComment = false;
+		this.result = '';
+	},
 
-	let char: string;
-	let previous: string;
+	closeTag(char: string): void {
+		const result = this.result + char;
 
-	literals.forEach((literal) => {
-		let index = 0;
+		this.inTag = false;
+		this.tags.push(result);
+		this.result = '';
+	},
 
-		while (index < literal.length) {
-			char = literal.charAt(index);
+	convert(literals: string[], values: any[]): any[] {
+		this.reset();
 
-			if (char === '<' && !inAttributeValue) {
-				if (result) {
-					if (!isWhitespace(result)) {
-						if (typeof result === 'string') {
-							result = result.trim();
-						}
-						tags.push(result);
-					}
-					result = '';
+		literals.forEach((literal) => {
+			let index = 0;
+
+			while (index < literal.length) {
+				const char = literal.charAt(index);
+				const inAttributeValue = this.inAttributeValue;
+				const inComment = this.inComment;
+				const inTag = this.inTag;
+				const previous = this.previous;
+
+				if (char === '<' && !inAttributeValue) {
+					this.openTag(char);
 				}
-				inTag = true;
-				result += char;
-			}
-			else if (inTag && char === '>' && !inAttributeValue) {
-				inTag = false;
-				result += char;
-				tags.push(result);
-				result = '';
-			}
-			else if (char === '/' && previous === '/') {
-				inComment = true;
-			}
-			else if (inComment && char === '\n') {
-				inComment = false;
-				result = '';
-			}
-			else if (!inComment) {
-				if (inTag) {
-					if (char === '"' && previous === '=') {
-						inAttributeValue = true;
-					}
-					else if (char === '"' && inAttributeValue && previous !== '\\') {
-						inAttributeValue = false;
-					}
-					if (previous === '<' && !inAttributeValue && isWhitespace(char)) {
-						inTag = false;
-						result += char;
-					}
-					else {
-						result += char;
-					}
+				else if (inTag && char === '>' && !inAttributeValue) {
+					this.closeTag(char);
 				}
-				else {
-					result += char;
+				else if (char === '/' && previous === '/') {
+					this.openComment();
 				}
+				else if (inComment && char === '\n') {
+					this.closeComment();
+				}
+				else if (!inComment) {
+					this.processChar(char);
+				}
+
+				this.previous = char;
+				index += 1;
 			}
 
-			previous = char;
-			index += 1;
+			if (values.length && !this.inComment) {
+				const nextValue: any = values.shift();
+				this.tags.push(mapTaggedValue(nextValue));
+			}
+		});
+
+		return this.tags;
+	},
+
+	openComment(): void {
+		this.inComment = true;
+	},
+
+	openTag(char: string): void {
+		let result = this.result;
+
+		if (result) {
+			if (!isWhitespace(result)) {
+				if (typeof result === 'string') {
+					result = result.trim();
+				}
+				this.tags.push(result);
+			}
+			this.result = '';
 		}
 
-		if (values.length && !inComment) {
-			const nextValue: any = values.shift();
-			tags.push(mapTaggedValue(nextValue));
-		}
-	});
+		this.inTag = true;
+		this.result += char;
+	},
 
-	return tags;
-}
+	processChar(char: string): void {
+		const inAttributeValue = this.inAttributeValue;
+		const previous = this.previous;
+		this.result += char;
+
+		if (!this.inTag) {
+			return;
+		}
+
+		if (char === '"') {
+			this.inAttributeValue = previous === '=' || (inAttributeValue && previous === '\\');
+		}
+
+		if (previous === '<' && !inAttributeValue && isCharWhitespace(char)) {
+			this.inTag = false;
+		}
+	},
+
+	reset() {
+		this.inAttributeValue = false;
+		this.inComment = false;
+		this.inTag = false;
+		this.result = '';
+		this.tags = [];
+	}
+};
 
 function extractAttributeValue(parts: string[]): string {
 	if (!parts || !parts.length) {
@@ -108,6 +153,10 @@ function extractAttributeValue(parts: string[]): string {
 
 function identity(value: any): any {
 	return value;
+}
+
+function isCharWhitespace(value: string): boolean {
+	return value === '' || value === ' ' || value === '\t' || value === '\n';
 }
 
 // TODO: This functionality could likely be handled during the `nestNodeArray`
@@ -360,7 +409,7 @@ export const escapeHtml = (function () {
  */
 export default function getParser(callback: ParserCallback = identity): Parser {
 	return function (literals: string[], ...values: any[]): HtmlMap {
-		return callback(mapArrayToNode(nestNodeArray(convertTemplateToArray(literals, values))));
+		return callback(mapArrayToNode(nestNodeArray(converter.convert(literals, values))));
 	};
 }
 
@@ -389,7 +438,7 @@ export function isHtmlComment(value: string): boolean {
  */
 export function isHtmlTag(value: string): boolean {
 	return !isHtmlComment(value) && value.length >= 3 && value.charAt(0) === '<' &&
-		value.charAt(value.length - 1) === '>' && !isWhitespace(value.charAt(1));
+		value.charAt(value.length - 1) === '>' && !isCharWhitespace(value.charAt(1));
 }
 
 export function isInterpolationValue(value: string): boolean {
@@ -409,8 +458,7 @@ export function isInterpolationValue(value: string): boolean {
  * `true` if the value is only whitespace; `false` otherwise.
  */
 export function isWhitespace(value: string): boolean {
-	return value === '' || value === ' ' || value === '\t' || value === '\n' ||
-		BLANK_PATTERN.test(value);
+	return isCharWhitespace(value) || BLANK_PATTERN.test(value);
 }
 
 /**
