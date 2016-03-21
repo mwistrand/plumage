@@ -19,8 +19,10 @@
 	"files": [
 		"./src/interfaces.d.ts",
 		"./src/parser.ts",
+		"./src/Plumage.ts",
 		"./src/vdom.ts",
 		"./tests/unit/parser.ts",
+		"./tests/unit/Plumage.ts",
 		"./tests/unit/vdom.ts",
 		"./typings/tsd.d.ts"
 	]
