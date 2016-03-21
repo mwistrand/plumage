@@ -152,6 +152,13 @@ function mapArrayToNode(parts: any[]): HtmlMap {
 
 function mapTaggedValue(value: any): string | TypeMap {
 	if (typeof value === 'string') {
+		if (isInterpolationValue(value)) {
+			return {
+				type: ValueTypes.Interpolation,
+				value: value
+			};
+		}
+
 		return value;
 	}
 	else if (typeof value === 'number') {
@@ -385,6 +392,11 @@ export function isHtmlTag(value: string): boolean {
 		value.charAt(value.length - 1) === '>' && !isWhitespace(value.charAt(1));
 }
 
+export function isInterpolationValue(value: string): boolean {
+	return (value.indexOf('$[') === 0 || value.indexOf('$![') === 0) &&
+		value.lastIndexOf(']') === value.length - 1;
+}
+
 /**
  * Determines whether the provided string consists only of whitespace.
  *
@@ -509,5 +521,6 @@ export const enum ValueTypes {
 	Object,
 	Array,
 	Function,
+	Interpolation,
 	Undefined
 };

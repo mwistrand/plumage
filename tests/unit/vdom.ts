@@ -2,6 +2,7 @@ import registerSuite = require('intern!object');
 import assert = require('intern/chai!assert');
 import { h } from 'maquette';
 import { Plumage } from 'src/interfaces';
+import { TypeMap } from 'src/parser';
 import getParser from 'src/vdom';
 
 interface Widget extends Plumage {
@@ -30,6 +31,22 @@ registerSuite({
 			}));
 		},
 
+		'assert node with interpolated an attribute value'() {
+			let result = getParser(widget, function (typeObject: TypeMap): string {
+				return 'random input value';
+			})`<input value="$[value]">`;
+			assert.deepEqual(result, h('input', {
+				value: 'random input value'
+			}), 'Normal interpolation replacement.');
+
+			result = getParser(widget, function (typeObject: TypeMap): string {
+				return 'random input value';
+			})`<input value="$![value]">`;
+			assert.deepEqual(result, h('input', {
+				value: 'random input value'
+			}), 'Bang interpolation replacement.');
+		},
+
 		'assert node with event listeners'() {
 			const result = parse`<button onclick="eventCallback">`;
 			assert.deepEqual(result, h('button', {
@@ -50,7 +67,23 @@ registerSuite({
 			]));
 		},
 
-		'assert with interpolation values'() {
+		'assert node with interpolated children'() {
+			let result = getParser(widget, function (typeObject: TypeMap): string {
+				return 'random text';
+			})`<div>$[value]</div>`;
+			assert.deepEqual(result, h('div', [
+				'random text'
+			]), 'Normal interpolation replacement.');
+
+			result = getParser(widget, function (typeObject: TypeMap): string {
+				return 'random text';
+			})`<div>$![value]</div>`;
+			assert.deepEqual(result, h('div', [
+				'random text'
+			]), 'Bang interpolation replacement.');
+		},
+
+		'assert with ES2015 interpolation values'() {
 			const obj = {
 				toString: function () {
 					return 'Lorem ipsum dolor sit amet.'

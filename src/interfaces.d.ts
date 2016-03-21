@@ -1,17 +1,19 @@
-export interface GenericObject {
+interface GenericObject {
 	[key: string]: any;
 }
 
-export interface Plumage {
-	constructor?: (options: PlumageOptions) => void;
+export interface Context extends GenericObject {}
+
+export interface Plumage extends Context {
 	id: number;
+	initializers?: PlumageInitializer[];
 	isDestroyed: boolean;
 	isRendered: boolean;
 	node: HTMLElement;
 	parent?: Plumage;
 	store: Store;
 
-	addChild(child: Plumage, parentNode?: HTMLElement): Plumage;
+	addChild(child: Plumage, node?: HTMLElement): Plumage;
 	destroy(): void;
 	placeAt(parent: Plumage | HTMLElement, parentNode?: HTMLElement): Plumage;
 	removeChild(child: Plumage): Plumage;
@@ -19,5 +21,17 @@ export interface Plumage {
 	setStore(store: Store): void;
 }
 
-export interface PlumageOptions extends GenericObject {}
+export interface PlumageFactory {
+	compose(options: PlumageOptions): PlumageFactory,
+	create(options: PlumageOptions, parent?: Plumage | HTMLElement, parentNode?: HTMLElement): Plumage
+}
+
+export interface PlumageInitializer {
+	(instance: Plumage, options?: PlumageOptions): void;
+}
+
+export interface PlumageOptions extends GenericObject {
+	initializers?: PlumageInitializer[];
+}
+
 export interface Store extends GenericObject {}
