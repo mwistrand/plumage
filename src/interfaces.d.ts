@@ -11,6 +11,7 @@ export interface Plumage extends Context {
 	isRendered: boolean;
 	node: HTMLElement;
 	parent?: Plumage;
+	store: Store;
 	storeProp: string | symbol;
 
 	addChild(child: Plumage, node?: HTMLElement): Plumage;

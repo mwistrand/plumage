@@ -9,6 +9,10 @@ const Plumage= <Plumage> {
 	isDestroyed: false,
 	isRendered: false,
 
+	get store() {
+		return storeMap.get(this);
+	},
+
 	/**
 	 * Registers a Plumage instance as a child of this instance, which allows the
 	 * children to be updated automatically when the store updates.
